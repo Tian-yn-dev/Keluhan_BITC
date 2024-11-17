@@ -2,105 +2,107 @@ const dbPool = require("../config/database");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { nanoid } = require("nanoid");
-const moment = require("moment-timezone");
+const moment = require("moment-timezone"); 
 const { KeluhanSelesai } = require("../controller/mailer");
 
-const saltRounds = 10;
-const jwtSecret = "SECRET";
-
-const getAllComplaints = () => {
-  const SQLQuery = "SELECT * FROM keluhan";
-  return dbPool.execute(SQLQuery);
-};
-
-const getComplaintsById = async (id) => {
-  const SQLQuery = "SELECT * FROM keluhan WHERE id = ?";
-  const [rows] = await dbPool.execute(SQLQuery, [id]);
-
-  if (rows.length === 0) {
-    throw new Error("Data keluhan tidak ditemukan");
+class ComplaintsService {
+  constructor() {
+    this.saltRounds = 10;
+    this.jwtSecret = "SECRET";
   }
 
-  return rows[0];
-};
-
-const createComplaints = async (body) => {
-  const { id, name, categories, phone, email, facilities, image, isikeluhan } =
-    body;
-
-  // Validasi input
-  if (!name || !categories || !phone || !email || !isikeluhan) {
-    throw new Error("Semua field wajib diisi kecuali id dan image");
+  async getAllComplaints() {
+    const SQLQuery = "SELECT * FROM keluhan";
+    return dbPool.execute(SQLQuery);
   }
 
-  const createAt = moment().tz("Asia/Jakarta").format("YYYY-MM-DD HH:mm:ss");
+  async getComplaintsById(id) {
+    const SQLQuery = "SELECT * FROM keluhan WHERE id = ?";
+    const [rows] = await dbPool.execute(SQLQuery, [id]);
 
-  const SQLQuery = `INSERT INTO keluhan (id, name, email, categories, phone, facilities, media, assign_to, isikeluhan, status, createAt) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-  const values = [
-    id || null,
-    name,
-    email,
-    categories,
-    phone,
-    facilities || null,
-    image || null,
-    null, // assign_to
-    isikeluhan,
-    "Pending", // status
-    createAt,
-  ];
+    if (rows.length === 0) {
+      throw new Error("Data keluhan tidak ditemukan");
+    }
 
-  return dbPool.execute(SQLQuery, values);
-};
-
-const deleteComplaints = async (id) => {
-  // const { id } = id;
-  const complaints = await getComplaintsById(id);
-
-  if (id !== id) {
-    throw new Error(
-      "Anda tidak memiliki izin untuk menghapus data keluhan ini"
-    );
+    return rows[0];
   }
 
-  const SQLQuery = `DELETE FROM keluhan WHERE id = ?`;
-  const [result] = await dbPool.execute(SQLQuery, [id]);
+  async createComplaints(body) {
+    const { id, name, categories, phone, email, facilities, image, isikeluhan } = body;
 
-  if (result.affectedRows === 0) {
-    throw new Error("Data keluhan tidak ditemukan");
+    // Validasi input
+    if (!name || !categories || !phone || !email || !isikeluhan) {
+      throw new Error("Semua field wajib diisi kecuali id dan image");
+    }
+
+    const createAt = moment().tz("Asia/Jakarta").format("YYYY-MM-DD HH:mm:ss");
+
+    const SQLQuery = `INSERT INTO keluhan (id, name, email, categories, phone, facilities, media, assign_to, isikeluhan, status, createAt) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const values = [
+      id || null,
+      name,
+      email, 
+      categories,
+      phone,
+      facilities || null,
+      image || null,
+      null, // assign_to
+      isikeluhan,
+      "Pending", // status
+      createAt,
+    ];
+
+    return dbPool.execute(SQLQuery, values);
   }
 
-  return { message: "Data keluhan berhasil dihapus" };
-};
+  async deleteComplaints(id) {
+    const complaints = await this.getComplaintsById(id);
 
-const updateComplaints = (keluhanData) => {
-  const SQLQuery = `  UPDATE keluhan 
-                        SET name='${keluhanData.name}', tenant='${keluhanData.categories}', phone='${keluhanData.phone}', facilities='${keluhanData.facilities}', image='${keluhanData.image}', isikeluhan='${keluhanData.isikeluhan}'
-                        WHERE id=${keluhanData.id}`;
+    if (id !== id) {
+      throw new Error("Anda tidak memiliki izin untuk menghapus data keluhan ini");
+    }
 
-  return dbPool.execute(SQLQuery);
-};
+    const SQLQuery = `DELETE FROM keluhan WHERE id = ?`;
+    const [result] = await dbPool.execute(SQLQuery, [id]);
 
-const assignComplaints = async (id, assign_to) => {
-  const SQLQuery = `UPDATE keluhan SET assign_to = ? WHERE id = ?`;
-  return dbPool.execute(SQLQuery, [assign_to, id]);
-};
+    if (result.affectedRows === 0) {
+      throw new Error("Data keluhan tidak ditemukan");
+    }
 
-const completeComplaints = async (id) => {
-  const SQLQuery = `UPDATE keluhan SET status = 'Selesai' WHERE id = ?`;
-  const [result] = await dbPool.execute(SQLQuery, [id]);
-  const complaints = await getComplaintsById(id);
-  KeluhanSelesai(complaints.email);
-  return result;
-};
+    return { message: "Data keluhan berhasil dihapus" };
+  }
 
-module.exports = {
-  getAllComplaints,
-  createComplaints,
-  deleteComplaints,
-  updateComplaints,
-  getComplaintsById,
-  assignComplaints,
-  completeComplaints,
-};
+  async updateComplaints(keluhanData) {
+    const SQLQuery = `UPDATE keluhan 
+                     SET name=?, categories=?, phone=?, facilities=?, image=?, isikeluhan=?
+                     WHERE id=?`;
+    
+    const values = [
+      keluhanData.name,
+      keluhanData.categories,
+      keluhanData.phone,
+      keluhanData.facilities,
+      keluhanData.image,
+      keluhanData.isikeluhan,
+      keluhanData.id
+    ];
+
+    return dbPool.execute(SQLQuery, values);
+  }
+
+  async assignComplaints(id, assign_to) {
+    const SQLQuery = `UPDATE keluhan SET assign_to = ? WHERE id = ?`;
+    return dbPool.execute(SQLQuery, [assign_to, id]);
+  }
+
+  async completeComplaints(id) {
+    const SQLQuery = `UPDATE keluhan SET status = 'Selesai' WHERE id = ?`;
+    const [result] = await dbPool.execute(SQLQuery, [id]);
+    const complaints = await this.getComplaintsById(id);
+    KeluhanSelesai(complaints.email);
+    return result;
+  }
+}
+
+module.exports = new ComplaintsService();

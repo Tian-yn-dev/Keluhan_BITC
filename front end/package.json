@@ -1,7 +1,7 @@
 {
-  "name": "restaurant-apps",
+  "name": "apps",
   "version": "1.0.0",
-  "description": "Submission: Katalog Restoran (Proyek 1)",
+  "description": "WEB BITC",
   "main": "index.js",
   "scripts": {
     "start": "node src/app.js",
