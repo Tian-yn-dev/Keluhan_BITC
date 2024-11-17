@@ -5,7 +5,3 @@ function showPage(pageId) {
   });
   document.getElementById(pageId).style.display = "block";
 }
-// =========================== COMPLAINTS =============================
-
-// ================== KELOLA PAKET =====================================
-
